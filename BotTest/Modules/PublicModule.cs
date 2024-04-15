@@ -104,10 +104,40 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 await HelpAsync();
                 break;
 
+            case "LevelUp":
+                await LevelUpAsync(profile);
+                break;
+
             default:
                 await ReplyAsync("Unknown command entered " + subCommand);
                 break;
         }
+    }
+
+    public async Task LevelUpAsync(Profile profile)
+    {
+        if (profile == null)
+        {
+            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            return;
+        }
+
+        int experience = profile.Experience;
+        int expNeed = 15 + (5 * profile.Level);
+
+        if (experience < expNeed)
+        {
+            await ReplyAsync($"You don't have enough experience to level up! You need {expNeed - experience} more experience.");
+        }
+        else if (experience >= expNeed)
+        {
+            profile.Level += 1;
+            profile.Experience = 0;
+            await ReplyAsync($"You leveled up! You are now level {profile.Level}!");
+        }
+
+        await UpdateProfileAsync(profile);
+        return;
     }
 
     public async Task UpdateProfileAsync(Profile profile)
@@ -267,6 +297,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 await ReplyAsync($"You found {weapons[random].Id}!" +
                                  $"\rIt does {weapons[random].Damage} damage!" +
                                  $"\rIt has a value of {weapons[random].Value}");
+
+                await LevelUpAsync(profile);
 
                 for (int i = 0; i < 9; i++)
                 {
