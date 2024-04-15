@@ -407,7 +407,16 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await ReplyAsync("Account not found!");
         }
 
-        await UpdateProfileAsync(profile);
+        if (mess2 == "New" && profile == null)
+        {
+            var roof = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
+
+            await UpdateProfileAsync(roof);
+        }
+        else
+        {
+            await UpdateProfileAsync(profile);
+        }
         return;
     }
 
