@@ -14,17 +14,113 @@ using TextCommandFramework.Models;
 using static System.Net.Mime.MediaTypeNames;
 using Newtonsoft.Json.Linq;
 using System.Xml.Linq;
+using Discord.WebSocket;
+using System.ComponentModel;
 
 namespace TextCommandFramework.Modules;
 
-// Modules must be public and inherit from an IModuleBase
 public class PublicModule : ModuleBase<SocketCommandContext>
 {
+    private delegate Task AsyncSocketMessageHandler(SocketMessageComponent message);
+
+    private static bool _handlerAdded = false;
     private readonly BotContext _db;
-    public PublicModule(BotContext db)
+    private readonly DiscordSocketClient _client;
+    public PublicModule(BotContext db, DiscordSocketClient client)
     {
         _db = db;
+        _client = client;
+
+        if (!_handlerAdded)
+        {
+            _client.ButtonExecuted += ClientOnButtonExecuted;
+            _client.SelectMenuExecuted += ClientOnSelectMenuExecuted;
+            _handlers.TryAdd("custom-id", HandleCustomButtonClicked);
+            _handlerAdded = true;
+        }
+
     }
+
+    private async Task ClientOnSelectMenuExecuted(SocketMessageComponent component)
+    {
+        if (_handlers.ContainsKey(component.Data.CustomId))
+            await _handlers[component.Data.CustomId](component);
+        else
+        {
+            await component.RespondAsync($"No handler exists for select dropdown {component.Data.CustomId}");
+        }
+    }
+
+    private Dictionary<string, AsyncSocketMessageHandler> _handlers = new();
+
+    public async Task ClientOnButtonExecuted(SocketMessageComponent component)
+    {
+        if (_handlers.ContainsKey(component.Data.CustomId))
+            await _handlers[component.Data.CustomId](component);
+        else
+        {
+            await component.RespondAsync($"No handler exists for button id {component.Data.CustomId}");
+        }
+    }
+
+    public async Task HandleCustomButtonClicked(SocketMessageComponent component)
+    {
+        await component.RespondAsync($"{component.User.Mention} has clicked the button!");
+    }
+
+    [Command("Button")]
+    public async Task Spawn()
+    {
+        var builder = new ComponentBuilder()
+            .WithRows(new[]
+            {
+                new ActionRowBuilder()
+                    .WithButton("label1", "other-id")
+                    .WithButton("label2", "custom-id"),
+                new ActionRowBuilder()
+                    .WithButton("label3", "other-id2")
+                    .WithButton("label4", "custom-id2"),
+            });
+        
+
+        builder.WithSelectMenu("myselectmenu", new List<SelectMenuOptionBuilder>(new[]
+        {
+            new SelectMenuOptionBuilder().WithLabel("Carrots").WithValue("5").WithDefault(true),
+            new SelectMenuOptionBuilder().WithLabel("Lettuce").WithValue("6"),
+            new SelectMenuOptionBuilder().WithLabel("Rah").WithValue("7")
+        }));
+
+        var options = await
+            _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
+
+        builder.WithSelectMenu("weaponsmenu", options);
+
+
+        var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
+        var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
+
+        if (profile != null)
+        {
+            var inventoryOptions = new List<SelectMenuOptionBuilder>();
+
+            for (int i = 0; i < profile.Inventory.Count - 1; i++)
+            {
+                string weaponName = weapons.FirstOrDefault(w => w.Id == profile.Inventory[i])?.Name ?? "Unknown";
+
+                var option = new SelectMenuOptionBuilder()
+                    .WithLabel(weaponName)
+                    .WithValue($"Slot {i}: {profile.Inventory[i]}"); // Unique identifier appended to the value
+
+                inventoryOptions.Add(option);
+            }
+
+            builder.WithSelectMenu("inventorymenu", inventoryOptions);
+        }
+
+        await ReplyAsync("Here is a button!", components: builder.Build());
+    }
+
+
 
     [Command("WTest")]
     public async Task TestAsync(string subCmd = "", int rah = 0)
