@@ -35,7 +35,20 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             _client.ButtonExecuted += ClientOnButtonExecuted;
             _client.SelectMenuExecuted += ClientOnSelectMenuExecuted;
-            _handlers.TryAdd("custom-id", HandleCustomButtonClicked);
+
+            _handlers.TryAdd("Account-id", HandleCustomButtonClicked);
+            _handlers.TryAdd("Account-Me", HandleCustomButtonClicked);
+            _handlers.TryAdd("Account-New", HandleCustomButtonClicked);
+            _handlers.TryAdd("Account-Delete", HandleCustomButtonClicked);
+
+            _handlers.TryAdd("Inventory-id", HandleCustomButtonClicked);
+            _handlers.TryAdd("Inventory-id1", HandleCustomButtonClicked);
+
+            _handlers.TryAdd("Dungeon-id", HandleCustomButtonClicked);
+            _handlers.TryAdd("Dungeon-Crawl", HandleCustomButtonClicked);
+
+            _handlers.TryAdd("Shop-id", HandleCustomButtonClicked);
+            _handlers.TryAdd("Shop-Restock", HandleCustomButtonClicked);
             _handlerAdded = true;
         }
 
@@ -65,36 +78,75 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleCustomButtonClicked(SocketMessageComponent component)
     {
-        await component.RespondAsync($"{component.User.Mention} has clicked the button!");
+
+        if (component.Data.CustomId == "Account-id")
+        {
+            var builder = new ComponentBuilder()
+                .WithRows(new[]
+                {
+                    new ActionRowBuilder()
+                        .WithButton("My Account", "Account-Me")
+                        .WithButton("New Account", "Account-New")
+                        .WithButton("Delete Account", "Account-Delete")
+                });
+
+            await component.RespondAsync(components: builder.Build());
+        }
+
+        if (component.Data.CustomId == "Account-Me")
+        {
+            var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == component.User.Id);
+            var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
+            
+            await HandleGameAccountAsync("Me", null, profile, weapons, component);
+        }
+
+        if (component.Data.CustomId == "Account-New")
+        {
+            var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == component.User.Id);
+            var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
+
+            await HandleGameAccountAsync("New", null, profile, weapons, component);
+        }
+
+        if (component.Data.CustomId == "Account-Delete")
+        {
+            var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == component.User.Id);
+            var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
+
+            await HandleGameAccountAsync("Delete", null, profile, weapons, component);
+        }
+
+        return;
     }
 
-    [Command("Button")]
+    [Command("Buttons")]
     public async Task Spawn()
     {
         var builder = new ComponentBuilder()
             .WithRows(new[]
             {
                 new ActionRowBuilder()
-                    .WithButton("label1", "other-id")
-                    .WithButton("label2", "custom-id"),
+                    .WithButton("Account", "Account-id")
+                    .WithButton("Inventory", "Inventory-id"),
                 new ActionRowBuilder()
-                    .WithButton("label3", "other-id2")
-                    .WithButton("label4", "custom-id2"),
+                    .WithButton("Dungeon", "Dungeon-id")
+                    .WithButton("Shop", "Shop-id"),
             });
         
-
+        /*
         builder.WithSelectMenu("myselectmenu", new List<SelectMenuOptionBuilder>(new[]
         {
             new SelectMenuOptionBuilder().WithLabel("Carrots").WithValue("5").WithDefault(true),
             new SelectMenuOptionBuilder().WithLabel("Lettuce").WithValue("6"),
             new SelectMenuOptionBuilder().WithLabel("Rah").WithValue("7")
         }));
+        */
 
         var options = await
             _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
 
         builder.WithSelectMenu("weaponsmenu", options);
-
 
         var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
         var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
@@ -109,7 +161,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
                 var option = new SelectMenuOptionBuilder()
                     .WithLabel(weaponName)
-                    .WithValue($"Slot {i}: {profile.Inventory[i]}"); // Unique identifier appended to the value
+                    .WithValue($"Slot {i}: {profile.Inventory[i]}");
 
                 inventoryOptions.Add(option);
             }
@@ -117,7 +169,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             builder.WithSelectMenu("inventorymenu", inventoryOptions);
         }
 
-        await ReplyAsync("Here is a button!", components: builder.Build());
+        await ReplyAsync(components: builder.Build());
     }
 
 
@@ -210,11 +262,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
     }
 
-    public async Task LevelUpAsync(Profile profile)
+    public async Task LevelUpAsync(Profile profile, SocketMessageComponent? component = null)
     {
+        string response = "";
+
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
 
@@ -223,33 +277,45 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (experience < expNeed)
         {
-            await ReplyAsync($"You don't have enough experience to level up! You need {expNeed - experience} more experience.");
+            response = $"You don't have enough experience to level up! You need {expNeed - experience} more experience.";
         }
         else if (experience >= expNeed)
         {
             profile.Level += 1;
             profile.Experience = 0;
-            await ReplyAsync($"You leveled up! You are now level {profile.Level}!");
+            response = $"You leveled up! You are now level {profile.Level}!";
         }
 
-        await UpdateProfileAsync(profile);
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
+
+        await UpdateProfileAsync(profile, component);
         return;
     }
 
-    public async Task UpdateProfileAsync(Profile profile)
+    public async Task UpdateProfileAsync(Profile profile, SocketMessageComponent? component = null)
     {
+        string response = "";
+
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
+
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
 
         _db.Update(profile);
         await _db.SaveChangesAsync();
         return;
     }
 
-    public async Task HandleAllItemsAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons)
+    public async Task HandleAllItemsAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
         if (profile == null)
         {
@@ -266,11 +332,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             }
         }
 
-        await UpdateProfileAsync(profile);
+        await UpdateProfileAsync(profile, component);
         return;
     }
 
-    public async Task HandleSetItemAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons)
+    public async Task HandleSetItemAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
         if (profile == null)
         {
@@ -306,11 +372,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
     }
 
-    public async Task HandleDungeonAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons)
+    public async Task HandleDungeonAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
+        string response = "";
+
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
 
@@ -324,7 +392,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             if (Move < 20)
             {
-                await ReplyAsync("You moved, but at what cost?");
+                response = "You moved, but at what cost?";
                 return;
             }
             else if (Move > 20)
@@ -361,12 +429,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 }
             }
 
-            await ReplyAsync($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
+            response = $"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight";
         }
 
         if (mess2 == "Crawl" && profile.Fight >= 0)
         {
-            await ReplyAsync($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
+            response = $"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight";
             return;
         }
 
@@ -375,13 +443,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             int DMult = (profile.Damage[profile.ItemSelected] * profile.Level * profile.Value[profile.ItemSelected]);
             profile.CHP -= (DMult);
 
-            await ReplyAsync($"You swung at your opponent and did {DMult} damage!" +
-                             $"\rYour Hp: {profile.Hp}" + 
-                             $"\r{profile.CName}s Hp: {profile.CHP}");
+            response = $"You swung at your opponent and did {DMult} damage!" +
+                       $"\rYour Hp: {profile.Hp}" + 
+                       $"\r{profile.CName}s Hp: {profile.CHP}";
             
             if (profile.CHP <= 0)
             {
-                await ReplyAsync($"You win! Here's the exp you've earned: {profile.CExpGain}");
+                response = $"You win! Here's the exp you've earned: {profile.CExpGain}";
                 profile.Experience += profile.CExpGain;
                 profile.CExpGain = 0;
                 int random = rnd.Next(0, 6);
@@ -390,9 +458,9 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 profile.Damage[10] = weapons[random].Damage;
                 profile.Value[10] = weapons[random].Value;
 
-                await ReplyAsync($"You found {weapons[random].Id}!" +
-                                 $"\rIt does {weapons[random].Damage} damage!" +
-                                 $"\rIt has a value of {weapons[random].Value}");
+                response = $"You found {weapons[random].Id}!" +
+                           $"\rIt does {weapons[random].Damage} damage!" +
+                           $"\rIt has a value of {weapons[random].Value}";
 
                 await LevelUpAsync(profile);
 
@@ -406,10 +474,10 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
                 if (detect == 0)
                 {
-                    await ReplyAsync(
+                    response =
                         "Your inventory is full! Use ( !SetItem [ Space size ] ) to swap an item with what you just found!" +
                         "\rDefinitely go check ( !Game Inventory CheckInv ) to see what you want to swap it with!" +
-                        "\rIf you don't see anything you wanna swap it with, type in ( !Game SetItem Remove )!");
+                        "\rIf you don't see anything you wanna swap it with, type in ( !Game SetItem Remove )!";
                 }
 
                 detect = 0;
@@ -418,13 +486,18 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
         else if (profile != null && mess2 == "Fight" && profile.Fight == -1)
         {
-            await ReplyAsync("You just swung at mid air like a crazy man! Are you shadow boxing?");
+            response = "You just swung at mid air like a crazy man! Are you shadow boxing?";
         }
 
-        await UpdateProfileAsync(profile);
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
+
+        await UpdateProfileAsync(profile, component);
         return;
     }
-    public async Task HandleInventoryAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons)
+    public async Task HandleInventoryAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
         if (profile == null)
         {
@@ -473,15 +546,17 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             }
         }
 
-        await UpdateProfileAsync(profile);
+        await UpdateProfileAsync(profile, component);
         return;
     }
 
-    public async Task HandleGameAccountAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons)
+    public async Task HandleGameAccountAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        if (profile == null && mess2 == "New")
+        string response = "";
+
+        if (profile == null && mess2 == "New" && component == null)
         {
-            var newProfile = new Profile
+            profile = new Profile
             {
                 Name = Context.User.GlobalName,
                 DiscordId = Context.User.Id,
@@ -489,29 +564,46 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 Level = 1
             };
 
-            _db.Profile.Add(newProfile);
+            _db.Profile.Add(profile);
             await _db.SaveChangesAsync();
-            await ReplyAsync("Account created!");
+
+            response = "Account created!";
+        }
+        else if (profile == null && mess2 == "New")
+        {
+            profile = new Profile
+            {
+                Name = component.User.GlobalName,
+                DiscordId = component.User.Id,
+                Money = 100,
+                Level = 1
+            };
+
+            _db.Profile.Add(profile);
+            await _db.SaveChangesAsync();
+
+            response = "Account created!";
         }
         else if (profile != null && mess2 == "New")
         {
-            await ReplyAsync("You already have a profile!");
+            response = "You already have a profile!";
         }
 
         if (profile != null && mess2 == "Delete")
         {
             _db.Profile.Remove(profile);
             await _db.SaveChangesAsync();
-            await ReplyAsync("Account removed!");
+            response = "Account removed!";
         }
 
         if (profile != null && mess2 == "Me")
         {
-            await ReplyAsync($"This is: {profile.Name} " +
-                             $"\nMoney: {profile.Money} " +
-                             $"\nLevel: {profile.Level} " +
-                             $"\nExperience: {profile.Experience} " +
-                             $"\nSpace: {profile.Inventory.Count - 1}");
+
+            response = $"This is: {profile.Name} " +
+                              $"\nMoney: {profile.Money} " +
+                              $"\nLevel: {profile.Level} " +
+                              $"\nExperience: {profile.Experience} " +
+                              $"\nSpace: {profile.Inventory.Count - 1}";
         }
 
         if (profile != null && mess2 == "ProfileLookup")
@@ -519,21 +611,26 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             var other = await _db.Profile.FirstOrDefaultAsync(usr => usr.Name == nameLookup);
             
             if (other != null)
-                await ReplyAsync($"This is: {other.Name} " +
-                                 $"\nMoney: {other.Money} " +
-                                 $"\nLevel: {other.Level} " +
-                                 $"\nExperience: {other.Experience} " +
-                                 $"\nSpace: {other.Inventory.Count - 1}");
+                response = $"This is: {other.Name} " +
+                           $"\nMoney: {other.Money} " +
+                           $"\nLevel: {other.Level} " + 
+                           $"\nExperience: {other.Experience} " + 
+                           $"\nSpace: {other.Inventory.Count - 1}";
             else
             {
-                await ReplyAsync($"Sorry but I wasn't able to find {nameLookup}");
+                response = $"Sorry but I wasn't able to find {nameLookup}";
             }
         }
 
         if (profile == null && mess2 != "New")
         {
-            await ReplyAsync("Account not found!");
+            response = "Account not found!";
         }
+
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
 
         if (mess2 == "New" && profile == null)
         {
@@ -543,7 +640,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
         else
         {
-            await UpdateProfileAsync(profile);
+            await UpdateProfileAsync(profile, component);
         }
         return;
     }
@@ -685,7 +782,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         return;
     }
 
-    public async Task HandleShopAsync(string mess1, string nameLookup, Profile profile, List<Weapon> weapons)
+    public async Task HandleShopAsync(string mess1, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
         Random rnd1 = new Random();
 
@@ -819,7 +916,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             }
         }
 
-        await UpdateProfileAsync(profile);
+        await UpdateProfileAsync(profile, component);
         return;
     }
 
