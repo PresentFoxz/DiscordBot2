@@ -49,6 +49,9 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             _handlers.TryAdd("Shop-id", HandleCustomButtonClicked);
             _handlers.TryAdd("Shop-Restock", HandleCustomButtonClicked);
+
+
+            _handlers.TryAdd("HelpCmds", HandleCustomButtonClicked);
             _handlerAdded = true;
         }
 
@@ -117,6 +120,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await HandleGameAccountAsync("Delete", null, profile, weapons, component);
         }
 
+        if (component.Data.CustomId == "HelpCmds")
+        {
+            await HelpAsync(component);
+        }
+
         return;
     }
 
@@ -132,6 +140,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 new ActionRowBuilder()
                     .WithButton("Dungeon", "Dungeon-id")
                     .WithButton("Shop", "Shop-id"),
+                new ActionRowBuilder()
+                    .WithButton("HelpCmds", "HelpCmds")
             });
         
         /*
@@ -317,18 +327,19 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleAllItemsAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
+        string response = "";
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
 
         if (mess2 == "All")
         {
-            await ReplyAsync($"Here are the items in the shop!");
+            response = $"Here are the items in the shop!";
             for (int i = 0; i < weapons.Count; i++)
             {
-                await ReplyAsync($"{i}: ?");
+                response = $"{i}: ?";
             }
         }
 
@@ -338,15 +349,17 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleSetItemAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
+        string response = "";
+        
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
 
         if (mess2 == "Remove" && profile.Inventory[profile.Inventory.Count] > 0)
         {
-            await ReplyAsync($"You lost your item {weapons[profile.Inventory[10]].Name} for good.");
+            response = $"You lost your item {weapons[profile.Inventory[10]].Name} for good.";
             profile.Inventory[profile.Inventory.Count] = 0;
             profile.Damage[profile.Damage.Count] = 0;
             profile.Value[profile.Value.Count] = 0;
@@ -356,10 +369,9 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
             {
-                await ReplyAsync(
-                    $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 1]].Name} for good.");
-                await ReplyAsync(
-                    $"Its now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.");
+                response =
+                    $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 1]].Name} for good." +
+                    $"Its now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.";
 
                 profile.Inventory[(int.Parse(nameLookup) - 1)] = profile.Inventory[profile.Inventory.Count - 1];
                 profile.Damage[(int.Parse(nameLookup) - 1)] = profile.Damage[profile.Damage.Count - 1];
@@ -499,9 +511,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     }
     public async Task HandleInventoryAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
+        string response = "";
+
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
 
@@ -521,7 +535,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 }
             }
             string inventoryMessage = string.Join("\n", yourInventory);
-            await ReplyAsync($"This is your Inventory {profile.Name}:\n{inventoryMessage}");
+            response = $"This is your Inventory {profile.Name}:\n{inventoryMessage}";
         }
 
         if (mess2 == "ItemSwap")
@@ -530,21 +544,26 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             if (profile.ItemSelected >= 0 && profile.ItemSelected <= 9)
             {
-                await ReplyAsync($"You are using {weapons[profile.Inventory[profile.ItemSelected] - 1].Name} now.");
+                response = $"You are using {weapons[profile.Inventory[profile.ItemSelected] - 1].Name} now.";
             }
             else if (profile.ItemSelected > 9)
             {
-                await ReplyAsync($"You don't own this many inventory slots!");
+                response = $"You don't own this many inventory slots!";
             }
             else if (profile.ItemSelected < 0)
             {
-                await ReplyAsync($"Inventory starts at slot 1!");
+                response = $"Inventory starts at slot 1!";
             }
             else
             {
-                await ReplyAsync($"Error, womp womp.");
+                response = $"Error, womp womp.";
             }
         }
+
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
 
         await UpdateProfileAsync(profile, component);
         return;
@@ -784,11 +803,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleShopAsync(string mess1, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
+        string response = "";
         Random rnd1 = new Random();
 
         if (profile == null)
         {
-            await ReplyAsync("You don't have an account! Create one with !Game account new");
+            response = "You don't have an account! Create one with !Game account new";
             return;
         }
 
@@ -869,17 +889,17 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             profile.Money -= 50;
 
-            await ReplyAsync("You lost 50 gold for swapping the items!" +
-                             $"\rYou now own {profile.Money} bucks!" +
-                             $"\r\rHere is the current shop stock:" +
-                             $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
-                             $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
-                             $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.\");");
+            response = "You lost 50 gold for swapping the items!" +
+                       $"\rYou now own {profile.Money} bucks!" +
+                       $"\r\rHere is the current shop stock:" +
+                       $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
+                       $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
+                       $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.\");";
         }
         else if(profile.Money <= 49)
         {
-            await ReplyAsync("You ain't got enough money!" +
-                             $"You currently have {profile.Money} bucks!");
+            response = "You ain't got enough money!" +
+                       $"You currently have {profile.Money} bucks!";
         }
 
         if (profile != null && mess1 == "Sell")
@@ -888,15 +908,15 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             profile.Inventory[profile.ItemSelected] = 0;
             profile.Damage[profile.ItemSelected] = 0;
             profile.Value[profile.ItemSelected] = 0;
-            await ReplyAsync($"You sold your weapon for {profile.Value[profile.ItemSelected]} gold!");
+            response = $"You sold your weapon for {profile.Value[profile.ItemSelected]} gold!";
         }
 
         if (profile != null && mess1 == "View")
         {
-            await ReplyAsync("Here is the current shop stock:" +
-                             $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
-                             $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
-                             $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.");
+            response = "Here is the current shop stock:" +
+                       $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
+                       $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
+                       $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.";
         }
         
         if (profile != null && mess1 == "Buy")
@@ -907,54 +927,66 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 profile.Inventory[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Id;
                 profile.Damage[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Damage;
                 profile.Value[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value;
-                await ReplyAsync($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!");
+                response = $"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!";
             }
             else
             {
-                await ReplyAsync("You don't have enough money!" +
-                                 $"The item cost {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} while you only have {profile.Money} bucks!");
+                response = "You don't have enough money!" +
+                           $"The item cost {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} while you only have {profile.Money} bucks!";
             }
         }
+
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
 
         await UpdateProfileAsync(profile, component);
         return;
     }
 
-    public async Task HelpAsync()
+    public async Task HelpAsync(SocketMessageComponent? component = null)
     {
-        await ReplyAsync("You will always put a space between your commands!" +
-                         "\r\nTo use a command, try something like this! --> !Game account new" +
-                         "\r\n\r\n!Test" +
-                         "\r\n  Hp:" +
-                         "\r\n      Add: Adds HP to your account." +
-                         "\r\n      Remove: Removes HP from your account." +
-                         "\r\n  Money:" +
-                         "\r\n      Add: Adds money to your account." +
-                         "\r\n      Remove: Removes money from your account." +
-                         "\r\n  Level:" +
-                         "\r\n      Add: Adds levels to your account." +
-                         "\r\n      Remove: Removes levels from your account." +
-                         "\r\n  Experience:" +
-                         "\r\n      Add: Adds experience to your account." +
-                         "\r\n      Remove: Removes experience from your account." +
-                         "\r\n\r\n!Game" +
-                         "\r\n  Account:" +
-                         "\r\n      New: Creates an account for said profile.+" +
-                         "\r\n      Me: Shows you the details of your account" +
-                         "\r\n      ProfileLookup: Shows the details of others accounts that you look up." +
-                         "\r\n      Delete: Deletes the profile you own." +
-                         "\r\n  Dungeon:" +
-                         "\r\n      Crawl: Moves you around in the dungeon." +
-                         "\r\n      Fight: Fights the monster you're currently boxing." +
-                         "\r\n  Inventory:" +
-                         "\r\n      CheckInv: Checks the weapons you have in your Inventory." +
-                         "\r\n      ItemSwap: Swaps the weapon you are using for the one you want to swap with." +
-                         "\r\n  SetItem: Allows you to either set the item, or remove it." +
-                         "\r\n      Remove: Removes the item you currently found after fighting ( use this if u don't want the item )." +
-                         "\r\n      Replace: The item u decide to use ( Input a number from 1 - 10 )." +
-                         "\r\n  Shop: Sells the weapon you are currently using." +
-                         "\r\n      View: [Number]: Shows the weapons you can buy. Shop stock is randomly generated. Number can be anything" +
-                         "\r\n      Buy: [Number (1-3)]: Purchases a weapon. Be sure to swap to an empty spot in your inventory first." +
-                         "\r\n      Swap: Changes the shops items for 50 bucks.");
+        string response = "";
+
+        response = "You will always put a space between your commands!" +
+                   "\r\nTo use a command, try something like this! --> !Game account new" +
+                   "\r\n\r\n!Test" +
+                   "\r\n  Hp:" +
+                   "\r\n      Add: Adds HP to your account." +
+                   "\r\n      Remove: Removes HP from your account." +
+                   "\r\n  Money:" +
+                   "\r\n      Add: Adds money to your account." +
+                   "\r\n      Remove: Removes money from your account." +
+                   "\r\n  Level:" +
+                   "\r\n      Add: Adds levels to your account." +
+                   "\r\n      Remove: Removes levels from your account." +
+                   "\r\n  Experience:" +
+                   "\r\n      Add: Adds experience to your account." +
+                   "\r\n      Remove: Removes experience from your account." +
+                   "\r\n\r\n!Game" +
+                   "\r\n  Account:" +
+                   "\r\n      New: Creates an account for said profile.+" +
+                   "\r\n      Me: Shows you the details of your account" +
+                   "\r\n      ProfileLookup: Shows the details of others accounts that you look up." +
+                   "\r\n      Delete: Deletes the profile you own." +
+                   "\r\n  Dungeon:" +
+                   "\r\n      Crawl: Moves you around in the dungeon." +
+                   "\r\n      Fight: Fights the monster you're currently boxing." +
+                   "\r\n  Inventory:" +
+                   "\r\n      CheckInv: Checks the weapons you have in your Inventory." +
+                   "\r\n      ItemSwap: Swaps the weapon you are using for the one you want to swap with." +
+                   "\r\n  SetItem: Allows you to either set the item, or remove it." +
+                   "\r\n      Remove: Removes the item you currently found after fighting ( use this if u don't want the item )." +
+                   "\r\n      Replace: The item u decide to use ( Input a number from 1 - 10 )." +
+                   "\r\n  Shop: Sells the weapon you are currently using." +
+                   "\r\n      View: [Number]: Shows the weapons you can buy. Shop stock is randomly generated. Number can be anything" +
+                   "\r\n      Buy: [Number (1-3)]: Purchases a weapon. Be sure to swap to an empty spot in your inventory first." +
+                   "\r\n      Swap: Changes the shops items for 50 bucks.";
+
+        if (component is null)
+            await ReplyAsync(response);
+        else
+            await component.RespondAsync(response);
     }
 }
