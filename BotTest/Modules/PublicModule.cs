@@ -81,11 +81,21 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleCustomButtonClicked(SocketMessageComponent component)
     {
+        var builder = new ComponentBuilder();
+
+        if (component.Data.CustomId == "Shop-id")
+        {
+            var options = await
+                _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
+
+            builder.WithSelectMenu("weaponsmenu", options);
+
+            await component.RespondAsync(components: builder.Build());
+        }
 
         if (component.Data.CustomId == "Account-id")
         {
-            var builder = new ComponentBuilder()
-                .WithRows(new[]
+            builder.WithRows(new[]
                 {
                     new ActionRowBuilder()
                         .WithButton("My Account", "Account-Me")
@@ -120,6 +130,32 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await HandleGameAccountAsync("Delete", null, profile, weapons, component);
         }
 
+        if (component.Data.CustomId == "Inventory-id")
+        {
+            var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == component.User.Id);
+            var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
+
+            if (profile != null)
+            {
+                var inventoryOptions = new List<SelectMenuOptionBuilder>();
+
+                for (int i = 0; i < profile.Inventory.Count - 1; i++)
+                {
+                    string weaponName = weapons.FirstOrDefault(w => w.Id == profile.Inventory[i])?.Name ?? "Unknown";
+
+                    var option = new SelectMenuOptionBuilder()
+                        .WithLabel(weaponName)
+                        .WithValue($"Slot {i}: {profile.Inventory[i]}");
+
+                    inventoryOptions.Add(option);
+                }
+
+                builder.WithSelectMenu("inventorymenu", inventoryOptions);
+            }
+
+            await component.RespondAsync(components: builder.Build());
+        }
+
         if (component.Data.CustomId == "HelpCmds")
         {
             await HelpAsync(component);
@@ -152,32 +188,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             new SelectMenuOptionBuilder().WithLabel("Rah").WithValue("7")
         }));
         */
-
-        var options = await
-            _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
-
-        builder.WithSelectMenu("weaponsmenu", options);
-
-        var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
-        var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
-
-        if (profile != null)
-        {
-            var inventoryOptions = new List<SelectMenuOptionBuilder>();
-
-            for (int i = 0; i < profile.Inventory.Count - 1; i++)
-            {
-                string weaponName = weapons.FirstOrDefault(w => w.Id == profile.Inventory[i])?.Name ?? "Unknown";
-
-                var option = new SelectMenuOptionBuilder()
-                    .WithLabel(weaponName)
-                    .WithValue($"Slot {i}: {profile.Inventory[i]}");
-
-                inventoryOptions.Add(option);
-            }
-
-            builder.WithSelectMenu("inventorymenu", inventoryOptions);
-        }
 
         await ReplyAsync(components: builder.Build());
     }
