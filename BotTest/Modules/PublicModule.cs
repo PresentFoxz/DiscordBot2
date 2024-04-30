@@ -370,26 +370,17 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             return;
         }
+        string response = r.ToString();
 
-        string[] lines = r.ToString().Split('\n');
-        StringBuilder responseBuilder = new StringBuilder();
-
-        foreach (string line in lines)
-        {
-            responseBuilder.Append($"\r{line}\n");
-        }
-
-        string response = responseBuilder.ToString();
-
-        if (component is null)
+        if (component is null) 
             await ReplyAsync(response);
-        else
+        else 
             await component.RespondAsync(response);
         return;
     }
 
 
-    public async Task LevelUpAsync(Profile profile, SocketMessageComponent? component = null)
+        public async Task LevelUpAsync(Profile profile, SocketMessageComponent? component = null)
     {
         StringBuilder response = new();
 
