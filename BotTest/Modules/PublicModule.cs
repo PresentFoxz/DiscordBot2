@@ -119,7 +119,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 await component.RespondAsync(components: builder.Build());
             }
         }
-
+        
         if (component.Data.CustomId == "Account-id")
         {
             builder.WithRows(new[]
@@ -348,7 +348,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 break;
 
             case "LevelUp":
-                await LevelUpAsync(profile);
+                await LevelUpAsync(profile, null, null);
                 break;
 
             default:
@@ -380,13 +380,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     }
 
 
-        public async Task LevelUpAsync(Profile profile, SocketMessageComponent? component = null)
+    public async Task LevelUpAsync(Profile profile, StringBuilder response, SocketMessageComponent component = null)
     {
-        StringBuilder response = new();
-
         if (profile == null)
         {
-            response.Append("You don't have an account! Create one with !Game account new");
+            response.AppendLine("You don't have an account! Create one with !Game account new");
             return;
         }
 
@@ -395,13 +393,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (experience < expNeed)
         {
-            response.Append($"You don't have enough experience to level up! You need {expNeed - experience} more experience.");
+            response.AppendLine($"You don't have enough experience to level up! You need {expNeed - experience} more experience.");
         }
         else if (experience >= expNeed)
         {
             profile.Level += 1;
             profile.Experience = 0;
-            response.Append($"You leveled up! You are now level {profile.Level}!");
+            response.AppendLine($"You leveled up! You are now level {profile.Level}!");
         }
 
         await UpdateProfileAsync(profile, component);
@@ -414,7 +412,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (profile == null)
         {
-            response.Append("You don't have an account! Create one with !Game account new");
+            response.AppendLine("You don't have an account! Create one with !Game account new");
             return;
         }
 
@@ -430,16 +428,16 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         StringBuilder response = new();
         if (profile == null)
         {
-            response.Append("You don't have an account! Create one with !Game account new");
+            response.AppendLine("You don't have an account! Create one with !Game account new");
             return;
         }
 
         if (mess2 == "All")
         {
-            response.Append($"Here are the items in the shop!");
+            response.AppendLine($"Here are the items in the shop!");
             for (int i = 0; i < weapons.Count; i++)
             {
-                response.Append($"{i}: ?");
+                response.AppendLine($"{i}: ?");
             }
         }
 
@@ -454,13 +452,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         
         if (profile == null)
         {
-            response.Append("You don't have an account! Create one with !Game account new");
+            response.AppendLine("You don't have an account! Create one with !Game account new");
             return;
         }
 
         if (mess2 == "Remove" && profile.Inventory[profile.Inventory.Count] > 0)
         {
-            response.Append($"You lost your item {weapons[profile.Inventory[10]].Name} for good.");
+            response.AppendLine($"You lost your item {weapons[profile.Inventory[10]].Name} for good.");
             profile.Inventory[profile.Inventory.Count] = 0;
             profile.Damage[profile.Damage.Count] = 0;
             profile.Value[profile.Value.Count] = 0;
@@ -470,7 +468,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
             {
-                response.Append(
+                response.AppendLine(
                     $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 1]].Name} for good." +
                     $"\rIts now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.");
 
@@ -507,13 +505,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             profile.CExpGain = 0;
 
             profile.Fight = -1;
-            response.Append("You fled from the fight.");
+            response.AppendLine("You fled from the fight.");
             await ResponseAsync(response, component);
             return;
         }
         else if (profile != null && mess2 == "Run" && profile.Fight < 0)
         {
-            response.Append("You ain't even in a fight yet.");
+            response.AppendLine("You ain't even in a fight yet.");
 
             await ResponseAsync(response, component);
             return;
@@ -528,7 +526,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             if (Move < 20)
             {
-                response.Append("You moved, but at what cost?");
+                response.AppendLine("You moved, but at what cost?");
                 await ResponseAsync(response, component);
                 return;
             }
@@ -566,12 +564,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 }
             }
 
-            response.Append($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
+            response.AppendLine($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
         }
 
         if (mess2 == "Crawl" && profile.Fight >= 0)
         {
-            response.Append($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
+            response.AppendLine($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
         }
 
         if (profile != null && mess2 == "Fight" && profile.Fight >= 0)
@@ -579,11 +577,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             int DMult = (profile.Damage[profile.ItemSelected] + profile.Level + profile.Value[profile.ItemSelected]);
             profile.CHP -= (DMult);
 
-            response.Append($"You swung at your opponent and did {DMult} damage \rYour Hp: {profile.Hp} \r{profile.CName}s Hp: {profile.CHP}");
+            response.AppendLine($"You swung at your opponent and did {DMult} damage \rYour Hp: {profile.Hp} \r{profile.CName}s Hp: {profile.CHP}");
 
             if (profile.CHP <= 0)
             {
-                response.Append($"You win! Here's the exp you've earned: {profile.CExpGain}");
+                response.AppendLine($"You win! Here's the exp you've earned: {profile.CExpGain}");
                 profile.Experience += profile.CExpGain;
                 profile.CExpGain = 0;
                 int random = rnd.Next(0, 6);
@@ -594,11 +592,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
                 profile.CExpGain = 0;
 
-                response.Append($"You found {weapons[random].Name}!" +
+                response.AppendLine($"You found {weapons[random].Name}!" +
                              $"\rIt does {weapons[random].Damage} damage!" +
                              $"\rIt has a value of {weapons[random].Value}");
 
-                LevelUpAsync(profile, component);
+                await LevelUpAsync(profile, response, component);
 
                 for (int i = 0; i < 9; i++)
                 {
@@ -611,7 +609,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
                 if (detect == 0)
                 {
-                    response.Append(
+                    response.AppendLine(
                         "Your inventory is full! Use ( !SetItem [ Space size ] ) to swap an item with what you just found!" +
                         "\rDefinitely go check ( !Game Inventory CheckInv ) to see what you want to swap it with!" +
                         "\rIf you don't see anything you wanna swap it with, type in ( !Game SetItem Remove )!");
@@ -623,12 +621,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
         else if (profile != null && mess2 == "Fight" && profile.Fight == -1)
         {
-            response.Append("You just swung at mid air like a crazy man! Are you shadow boxing?");
+            response.AppendLine("You just swung at mid air like a crazy man! Are you shadow boxing?");
         }
 
         await ResponseAsync(response, component);
 
-        UpdateProfileAsync(profile, component);
+        await UpdateProfileAsync(profile, component);
         return;
     }
     public async Task HandleInventoryAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
@@ -637,7 +635,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (profile == null)
         {
-            response.Append("You don't have an account! Create one with !Game account new");
+            response.AppendLine("You don't have an account! Create one with !Game account new");
             return;
         }
 
@@ -657,7 +655,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 }
             }
             string inventoryMessage = string.Join("\n", yourInventory);
-            response.Append($"This is your Inventory {profile.Name}:\n{inventoryMessage}");
+            response.AppendLine($"This is your Inventory {profile.Name}:\n{inventoryMessage}");
         }
 
         if (mess2 == "ItemSwap")
@@ -666,19 +664,19 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             if (profile.ItemSelected >= 0 && profile.ItemSelected <= 9)
             {
-                response.Append($"You are using {weapons[profile.Inventory[profile.ItemSelected] - 1].Name} now.");
+                response.AppendLine($"You are using {weapons[profile.Inventory[profile.ItemSelected] - 1].Name} now.");
             }
             else if (profile.ItemSelected > 9)
             {
-                response.Append($"You don't own this many inventory slots!");
+                response.AppendLine($"You don't own this many inventory slots!");
             }
             else if (profile.ItemSelected < 0)
             {
-                response.Append($"Inventory starts at slot 1!");
+                response.AppendLine($"Inventory starts at slot 1!");
             }
             else
             {
-                response.Append($"Error, womp womp.");
+                response.AppendLine($"Error, womp womp.");
             }
         }
 
@@ -705,7 +703,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _db.Profile.Add(profile);
             await _db.SaveChangesAsync();
 
-            response.Append("Account created!");
+            response.AppendLine("Account created!");
         }
         else if (profile == null && mess2 == "New")
         {
@@ -720,24 +718,24 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _db.Profile.Add(profile);
             await _db.SaveChangesAsync();
 
-            response.Append("Account created!");
+            response.AppendLine("Account created!");
         }
         else if (profile != null && mess2 == "New")
         {
-            response.Append("You already have a profile!");
+            response.AppendLine("You already have a profile!");
         }
 
         if (profile != null && mess2 == "Delete")
         {
             _db.Profile.Remove(profile);
             await _db.SaveChangesAsync();
-            response.Append("Account removed!");
+            response.AppendLine("Account removed!");
         }
 
         if (profile != null && mess2 == "Me")
         {
 
-            response.Append($"This is: {profile.Name} " +
+            response.AppendLine($"This is: {profile.Name} " +
                          $"\nMoney: {profile.Money} " +
                          $"\nLevel: {profile.Level} " +
                          $"\nExperience: {profile.Experience} " +
@@ -749,20 +747,20 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             var other = await _db.Profile.FirstOrDefaultAsync(usr => usr.Name == nameLookup);
             
             if (other != null)
-                response.Append($"This is: {other.Name} " +
+                response.AppendLine($"This is: {other.Name} " +
                            $"\nMoney: {other.Money} " +
                            $"\nLevel: {other.Level} " + 
                            $"\nExperience: {other.Experience} " + 
                            $"\nSpace: {other.Inventory.Count - 1}");
             else
             {
-                response.Append($"Sorry but I wasn't able to find {nameLookup}");
+                response.AppendLine($"Sorry but I wasn't able to find {nameLookup}");
             }
         }
 
         if (profile == null && mess2 != "New")
         {
-            response.Append("Account not found!");
+            response.AppendLine("Account not found!");
         }
 
         await ResponseAsync(response, component);
@@ -786,11 +784,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         var user = await _db.Profile.FirstOrDefaultAsync(user => user.DiscordId == Context.User.Id);
         StringBuilder response = new();
 
-        response.Append("Test1");
-        response.Append("Test2");
+        response.AppendLine("Test1");
+        response.AppendLine("Test2");
         ResponseAsync(response, null);
     }
-
+    
     // Adding/removing money, levels, etc. for testing purposes
     [Command("Test")]
     public async Task TestAsync(string mess1, string mess2, int amount, string nameLookupTest)
@@ -938,7 +936,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (profile == null)
         {
-            response.Append("You don't have an account! Create one with !Game account new");
+            response.AppendLine("You don't have an account! Create one with !Game account new");
             return;
         }
 
@@ -1019,7 +1017,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             profile.Money -= 50;
 
-            response.Append("You lost 50 gold for swapping the items!" +
+            response.AppendLine("You lost 50 gold for swapping the items!" +
                        $"\rYou now own {profile.Money} bucks!" +
                        $"\r\rHere is the current shop stock:" +
                        $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
@@ -1028,7 +1026,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
         else if(profile.Money <= 49)
         {
-            response.Append("You ain't got enough money!" +
+            response.AppendLine("You ain't got enough money!" +
                        $"You currently have {profile.Money} bucks!");
         }
 
@@ -1038,12 +1036,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             profile.Inventory[profile.ItemSelected] = 0;
             profile.Damage[profile.ItemSelected] = 0;
             profile.Value[profile.ItemSelected] = 0;
-            response.Append($"You sold your weapon for {profile.Value[profile.ItemSelected]} gold!");
+            response.AppendLine($"You sold your weapon for {profile.Value[profile.ItemSelected]} gold!");
         }
 
         if (profile != null && mess1 == "View")
         {
-            response.Append($"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
+            response.AppendLine($"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
                        $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
                        $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.\");");
         }
@@ -1056,11 +1054,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 profile.Inventory[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Id;
                 profile.Damage[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Damage;
                 profile.Value[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value;
-                response.Append($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!");
+                response.AppendLine($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!");
             }
             else
             {
-                response.Append("You don't have enough money!" +
+                response.AppendLine("You don't have enough money!" +
                            $"The item cost {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} while you only have {profile.Money} bucks!");
             }
         }
@@ -1075,7 +1073,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     {
         StringBuilder response = new();
 
-        response.Append("You will always put a space between your commands!" +
+        response.AppendLine("You will always put a space between your commands!" +
                    "\r\nTo use a command, try something like this! --> !Game account new" +
                    "\r\n\r\n!Test" +
                    "\r\n  Hp:" +
