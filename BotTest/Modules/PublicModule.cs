@@ -100,17 +100,21 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Back")
         {
-            builder.WithRows(new[]
-            {
-                new ActionRowBuilder()
-                    .WithButton("Account", "Account-id")
+            builder = new ComponentBuilder()
+                .WithRows(new[]
+                {
+                    new ActionRowBuilder()
+                        .WithButton("Account", "Account-id")
                         .WithButton("Inventory", "Inventory-id"),
-                new ActionRowBuilder()
-                    .WithButton("Dungeon", "Dungeon-id")
-                    .WithButton("Shop", "Shop-id"),
-                new ActionRowBuilder()
-                    .WithButton("HelpCmds", "HelpCmds")
-            });
+                    new ActionRowBuilder()
+                        .WithButton("Dungeon", "Dungeon-id")
+                        .WithButton("Shop", "Shop-id"),
+                    new ActionRowBuilder()
+                        .WithButton("HelpCmds", "Help-id")
+                        .WithButton("BackupSave", "Save")
+                });
+
+            await component.RespondAsync(components: builder.Build());
         }
 
         if (component.Data.CustomId == "Shop-id")
@@ -194,10 +198,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Account-New")
         {
-            if (profile != null)
-            {
-                await HandleGameAccountAsync("New", null, profile, weapons, component);
-            }
+            await HandleGameAccountAsync("New", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Account-Delete")
@@ -310,7 +311,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("Dungeon", "Dungeon-id")
                     .WithButton("Shop", "Shop-id"),
                 new ActionRowBuilder()
-                    .WithButton("HelpCmds", "HelpCmds")
+                    .WithButton("HelpCmds", "Help-id")
                     .WithButton("BackupSave", "Save")
             });
         
@@ -744,22 +745,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     {
         StringBuilder response = new();
 
-        if (profile == null && mess2 == "New" && component == null)
-        {
-            profile = new Profile
-            {
-                Name = Context.User.GlobalName,
-                DiscordId = Context.User.Id,
-                Money = 100,
-                Level = 1
-            };
-
-            _db.Profile.Add(profile);
-            await _db.SaveChangesAsync();
-
-            response.AppendLine("Account created!");
-        }
-        else if (profile == null && mess2 == "New")
+        if (profile == null && mess2 == "New" && component != null)
         {
             profile = new Profile
             {
@@ -774,9 +760,36 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             response.AppendLine("Account created!");
         }
+        else if (profile == null && mess2 == "New" && component == null)
+        {
+            profile = new Profile
+            {
+                Name = Context.User.GlobalName,
+                DiscordId = Context.User.Id,
+                Money = 100,
+                Level = 1
+            };
+
+            _db.Profile.Add(profile);
+            await _db.SaveChangesAsync();
+
+            response.AppendLine("Account created!");
+        }
         else if (profile != null && mess2 == "New")
         {
             response.AppendLine("You already have a profile!");
+
+            await ResponseAsync(response, component);
+            await UpdateProfileAsync(profile, component);
+            return;
+        } 
+        else if (profile == null && mess2 == "New")
+        {
+            response.AppendLine("Account not found!");
+
+            await ResponseAsync(response, component);
+            await UpdateProfileAsync(profile, component);
+            return;
         }
 
         if (profile != null && mess2 == "Delete")
@@ -819,28 +832,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         await ResponseAsync(response, component);
 
-        if (mess2 == "New" && profile == null)
-        {
-            var roof = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
-
-            await UpdateProfileAsync(roof);
-        }
-        else
-        {
-            await UpdateProfileAsync(profile, component);
-        }
+        await UpdateProfileAsync(profile, component);
         return;
-    }
-
-    [Command("res")]
-    public async Task resAsync()
-    {
-        var user = await _db.Profile.FirstOrDefaultAsync(user => user.DiscordId == Context.User.Id);
-        StringBuilder response = new();
-
-        response.AppendLine("Test1");
-        response.AppendLine("Test2");
-        ResponseAsync(response, null);
     }
     
     // Adding / removing money, levels, etc. for testing purposes
