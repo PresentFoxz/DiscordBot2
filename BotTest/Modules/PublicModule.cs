@@ -28,6 +28,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     private static bool _handlerAdded = false;
     private readonly BotContext _db;
     private readonly DiscordSocketClient _client;
+
+    public StringBuilder response = new();
     public PublicModule(BotContext db, DiscordSocketClient client)
     {
         _db = db;
@@ -57,7 +59,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _handlers.TryAdd("Save", HandleCustomButtonClicked);
             _handlers.TryAdd("Back", HandleCustomButtonClicked);
 
-            _handlers.TryAdd("HelpCmds", HandleCustomButtonClicked);
+            _handlers.TryAdd("Help-id", HandleCustomButtonClicked);
             _handlerAdded = true;
         }
 
@@ -230,7 +232,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             }
         }
 
-        if (component.Data.CustomId == "HelpCmds")
+        if (component.Data.CustomId == "Help-id")
         {
             await HelpAsync(component);
         }
@@ -376,6 +378,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await ReplyAsync(response);
         else 
             await component.RespondAsync(response);
+
+        r.Clear();
         return;
     }
 
@@ -408,8 +412,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task UpdateProfileAsync(Profile profile, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
-
         if (profile == null)
         {
             response.AppendLine("You don't have an account! Create one with !Game account new");
@@ -425,7 +427,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleAllItemsAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
         if (profile == null)
         {
             response.AppendLine("You don't have an account! Create one with !Game account new");
@@ -448,8 +449,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleSetItemAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
-        
         if (profile == null)
         {
             response.AppendLine("You don't have an account! Create one with !Game account new");
@@ -469,7 +468,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
             {
                 response.AppendLine(
-                    $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 1]].Name} for good." +
+                    $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 2]].Name} for good." +
                     $"\rIts now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.");
 
                 profile.Inventory[(int.Parse(nameLookup) - 1)] = profile.Inventory[profile.Inventory.Count - 1];
@@ -483,14 +482,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
 
         await ResponseAsync(response, component);
-        UpdateProfileAsync(profile, component);
+        await UpdateProfileAsync(profile, component);
         return;
     }
 
     public async Task HandleDungeonAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
-             
         if (profile == null)
         {
             response.AppendLine("You don't have an account! Create one with !Game account new");
@@ -789,7 +786,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         ResponseAsync(response, null);
     }
     
-    // Adding/removing money, levels, etc. for testing purposes
+    // Adding / removing money, levels, etc. for testing purposes
     [Command("Test")]
     public async Task TestAsync(string mess1, string mess2, int amount, string nameLookupTest)
     {
