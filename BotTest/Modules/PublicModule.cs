@@ -17,7 +17,6 @@ using System.Xml.Linq;
 using Discord.WebSocket;
 using System.ComponentModel;
 using System.Text;
-using String = System.String;
 
 namespace TextCommandFramework.Modules;
 
@@ -46,7 +45,9 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _handlers.TryAdd("Account-Delete", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Inventory-id", HandleCustomButtonClicked);
-            _handlers.TryAdd("Inventory-id1", HandleCustomButtonClicked);
+            _handlers.TryAdd("Inventory-check", HandleCustomButtonClicked);
+            _handlers.TryAdd("Inventory-swap1", HandleCustomButtonClicked);
+            _handlers.TryAdd("Inventory-swap2", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Dungeon-id", HandleCustomButtonClicked);
             _handlers.TryAdd("Dungeon-Crawl", HandleCustomButtonClicked);
@@ -55,6 +56,10 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             _handlers.TryAdd("Shop-id", HandleCustomButtonClicked);
             _handlers.TryAdd("Shop-Restock", HandleCustomButtonClicked);
+            _handlers.TryAdd("Buy-menu", HandleCustomButtonClicked);
+            _handlers.TryAdd("Weapons-menu", HandleCustomButtonClicked);
+            _handlers.TryAdd("Sell-menu", HandleCustomButtonClicked);
+            _handlers.TryAdd("View-menu", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Save", HandleCustomButtonClicked);
             _handlers.TryAdd("Back", HandleCustomButtonClicked);
@@ -90,7 +95,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     public async Task HandleCustomButtonClicked(SocketMessageComponent component)
     {
         var builder = new ComponentBuilder();
-
         var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == component.User.Id);
         var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
 
@@ -111,17 +115,61 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Shop-id")
         {
-            if (profile != null)
+            builder.WithRows(new[]
             {
-                var options = await
-                    _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
+                new ActionRowBuilder()
+                    .WithButton("Restock", "Shop-Restock")
+                    .WithButton("Buy", "Buy-menu")
+                    .WithButton("Sell", "Sell-menu")
+                    .WithButton("View", "View-menu")
+            });
 
-                builder.WithSelectMenu("weaponsmenu", options);
-
-                await component.RespondAsync(components: builder.Build());
-            }
+            await component.RespondAsync("Remember to swap to the right item before you sell one.", components: builder.Build());
         }
-        
+
+        if (component.Data.CustomId == "Buy-menu")
+        {
+            // var options = await
+            //    _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
+
+            var options = new List<SelectMenuOptionBuilder>();
+
+            foreach (var i in profile.ShopItemsSave)
+            {
+                var weapon = await _db.Weapon.FindAsync(profile.ShopItemsSave[i]);
+                options.Add(new SelectMenuOptionBuilder().WithLabel(weapon!.Name).WithValue(weapon!.Id.ToString()));
+            }
+
+            builder.WithSelectMenu("Weapons-menu", options);
+
+            await component.RespondAsync($"Select a weapon to buy. You have {profile.Money} gold and {profile.Inventory.Count - 1} " + 
+                                         $"inventory slots open.", components: builder.Build());
+        }
+
+        if (component.Data.CustomId == "Weapons-menu")
+        {
+            var weapon = component.Data.Values.ToString();
+            var selectedValue = component.Data.Values.FirstOrDefault();
+
+            if (selectedValue != null && int.TryParse(selectedValue, out var weaponId))
+            {
+                var weaponSelected = _db.Weapon.FindAsync(weaponId).ToString();
+                await HandleShopAsync("Buy", weaponSelected, profile, weapons);
+            }
+            else
+                await component.RespondAsync("Invalid selection.");
+        }
+
+        if(component.Data.CustomId == "View-menu")
+        {
+            await HandleShopAsync("View", null, profile, weapons, component);
+        }
+
+        if (component.Data.CustomId == "Sell-menu")
+        {
+            await HandleShopAsync("Sell", null, profile, weapons, component);
+        }
+
         if (component.Data.CustomId == "Account-id")
         {
             builder.WithRows(new[]
@@ -164,11 +212,28 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             if (profile != null)
             {
-                UpdateProfileAsync(profile, component);
+                await UpdateProfileAsync(profile, component);
             }
         }
 
         if (component.Data.CustomId == "Inventory-id")
+        {
+            builder.WithRows(new[]
+            {
+                new ActionRowBuilder()
+                    .WithButton("Check Inventory", "Inventory-check")
+                    .WithButton("Swap Inventory", "Inventory-swap1")
+            });
+
+            await component.RespondAsync(components: builder.Build());
+        }
+
+        if (component.Data.CustomId == "Inventory-check")
+        {
+            await HandleInventoryAsync("CheckInv", null, profile, weapons, component);
+        }
+        
+        if (component.Data.CustomId == "Inventory-swap1")
         {
             if (profile != null)
             {
@@ -185,27 +250,19 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     inventoryOptions.Add(option);
                 }
 
-                builder.WithSelectMenu("inventorymenu", inventoryOptions);
+                builder.WithSelectMenu("Inventory-swap2", inventoryOptions);
 
-                await component.RespondAsync(components: builder.Build());
+                await component.RespondAsync("Which slot do you want to swap to?", components: builder.Build());
             }
         }
 
-        if (component.Data.CustomId == "Dungeon-id")
+        if (component.Data.CustomId == "Inventory-swap2")
         {
-            if (profile != null)
-            {
-                builder.WithRows(new[]
-                {
-                    new ActionRowBuilder()
-                        .WithButton("Crawl", "Dungeon-Crawl")
-                        .WithButton("Fight", "Dungeon-Fight")
-                        .WithButton("Run", "Dungeon-Run")
-                        .WithButton("Back", "Back")
-                });
+            var selectedValue = component.Data.Values.FirstOrDefault();
+            var slot = selectedValue!.Split(":")[0].Split(" ")[1];
 
-                await component.RespondAsync(components: builder.Build());
-            }
+            await HandleInventoryAsync("ItemSwap", slot, profile, null, component);
+
         }
 
         if (component.Data.CustomId == "Dungeon-Run")
@@ -376,7 +433,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component is null) 
             await ReplyAsync(response);
-        else 
+        else
             await component.RespondAsync(response);
 
         r.Clear();
@@ -443,7 +500,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         }
 
         await ResponseAsync(response, component);
-        UpdateProfileAsync(profile, component);
+        await UpdateProfileAsync(profile, component);
         return;
     }
 
@@ -514,7 +571,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-            Random rnd = new Random();
+        Random rnd = new Random();
         int detect = 0;
 
         if (profile != null && mess2 == "Crawl" && profile.Fight < 0)
