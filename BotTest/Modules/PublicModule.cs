@@ -273,8 +273,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             var itemSelected = component.Data.Values.FirstOrDefault();
 
-            await HandleInventoryAsync("ItemSwap", itemSelected, profile, null, component);
-
+            await HandleInventoryAsync("ItemSwap", slot, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Dungeon-id")
@@ -544,23 +543,47 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             profile.Value[profile.Value.Count] = 0;
         }
 
-        if (mess2 == "Replace")
+        if (component == null)
         {
-            if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
+            if (mess2 == "Replace")
             {
-                response.AppendLine(
-                    $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 2]].Name} for good." +
-                    $"\rIts now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.");
+                if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
+                {
+                    response.AppendLine(
+                        $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 2]].Name} for good." +
+                        $"\rIts now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.");
 
-                profile.Inventory[(int.Parse(nameLookup) - 1)] = profile.Inventory[profile.Inventory.Count - 1];
-                profile.Damage[(int.Parse(nameLookup) - 1)] = profile.Damage[profile.Damage.Count - 1];
-                profile.Value[(int.Parse(nameLookup) - 1)] = profile.Value[profile.Value.Count - 1];
+                    profile.Inventory[(int.Parse(nameLookup) - 1)] = profile.Inventory[profile.Inventory.Count - 1];
+                    profile.Damage[(int.Parse(nameLookup) - 1)] = profile.Damage[profile.Damage.Count - 1];
+                    profile.Value[(int.Parse(nameLookup) - 1)] = profile.Value[profile.Value.Count - 1];
 
-                profile.Inventory[profile.Inventory.Count - 1] = 0;
-                profile.Damage[profile.Damage.Count - 1] = 0;
-                profile.Value[profile.Value.Count - 1] = 0;
+                    profile.Inventory[profile.Inventory.Count - 1] = 0;
+                    profile.Damage[profile.Damage.Count - 1] = 0;
+                    profile.Value[profile.Value.Count - 1] = 0;
+                }
             }
         }
+        else if (component != null)
+        {
+            if (mess2 == "Replace")
+            {
+                if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
+                {
+                    response.AppendLine(
+                        $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 2]].Name} for good." +
+                        $"\rIts now replaced with {weapons[profile.Inventory[profile.Inventory.Count - 1] - 1].Name}.");
+
+                    profile.Inventory[(int.Parse(nameLookup) - 1)] = profile.Inventory[profile.Inventory.Count - 1];
+                    profile.Damage[(int.Parse(nameLookup) - 1)] = profile.Damage[profile.Damage.Count - 1];
+                    profile.Value[(int.Parse(nameLookup) - 1)] = profile.Value[profile.Value.Count - 1];
+
+                    profile.Inventory[profile.Inventory.Count - 1] = 0;
+                    profile.Damage[profile.Damage.Count - 1] = 0;
+                    profile.Value[profile.Value.Count - 1] = 0;
+                }
+            }
+        }
+        
 
         await ResponseAsync(response, component);
         await UpdateProfileAsync(profile, component);
@@ -711,8 +734,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     }
     public async Task HandleInventoryAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
-
         if (profile == null)
         {
             response.AppendLine("You don't have an account! Create one with !Game account new");
@@ -740,7 +761,14 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (mess2 == "ItemSwap")
         {
-            profile.ItemSelected = (int.Parse(nameLookup) - 1);
+            if (component == null)
+            {
+                profile.ItemSelected = (int.Parse(nameLookup) - 1);
+            }
+            else if (component != null)
+            {
+                profile.ItemSelected = (int.Parse(nameLookup));
+            }
 
             if (profile.ItemSelected >= 0 && profile.ItemSelected <= 9)
             {
@@ -768,9 +796,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleGameAccountAsync(string mess2, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
-
-        if (profile == null && mess2 == "New" && component != null)
+        if (profile == null && mess2 == "New" && component == null)
         {
             profile = new Profile
             {
@@ -1003,7 +1029,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
     public async Task HandleShopAsync(string mess1, string nameLookup, Profile profile, List<Weapon> weapons, SocketMessageComponent? component = null)
     {
-        StringBuilder response = new();
         Random rnd1 = new Random();
 
         if (profile == null)
