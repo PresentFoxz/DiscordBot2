@@ -17,6 +17,7 @@ using System.Xml.Linq;
 using Discord.WebSocket;
 using System.ComponentModel;
 using System.Text;
+using String = System.String;
 
 namespace TextCommandFramework.Modules;
 
@@ -29,6 +30,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     private readonly DiscordSocketClient _client;
 
     public StringBuilder response = new();
+
     public PublicModule(BotContext db, DiscordSocketClient client)
     {
         _db = db;
@@ -128,7 +130,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("View", "View-menu")
             });
 
-            await component.RespondAsync("Remember to swap to the right item before you sell one.", components: builder.Build());
+            await component.RespondAsync("Remember to swap to the right item before you sell one.",
+                components: builder.Build());
         }
 
         if (component.Data.CustomId == "Buy-menu")
@@ -146,8 +149,9 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
             builder.WithSelectMenu("Weapons-menu", options);
 
-            await component.RespondAsync($"Select a weapon to buy. You have {profile.Money} gold and {profile.Inventory.Count - 1} " + 
-                                         $"inventory slots open.", components: builder.Build());
+            await component.RespondAsync(
+                $"Select a weapon to buy. You have {profile.Money} gold and {profile.Inventory.Count - 1} " +
+                $"inventory slots open.", components: builder.Build());
         }
 
         if (component.Data.CustomId == "Weapons-menu")
@@ -164,7 +168,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 await component.RespondAsync("Invalid selection.");
         }
 
-        if(component.Data.CustomId == "View-menu")
+        if (component.Data.CustomId == "View-menu")
         {
             await HandleShopAsync("View", null, profile, weapons, component);
         }
@@ -177,13 +181,13 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         if (component.Data.CustomId == "Account-id")
         {
             builder.WithRows(new[]
-                {
-                    new ActionRowBuilder()
-                        .WithButton("My Account", "Account-Me")
-                        .WithButton("New Account", "Account-New")
-                        .WithButton("Delete Account", "Account-Delete")
-                        .WithButton("Back", "Back")
-                });
+            {
+                new ActionRowBuilder()
+                    .WithButton("My Account", "Account-Me")
+                    .WithButton("New Account", "Account-New")
+                    .WithButton("Delete Account", "Account-Delete")
+                    .WithButton("Back", "Back")
+            });
 
             await component.RespondAsync(components: builder.Build());
         }
@@ -241,7 +245,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             await HandleInventoryAsync("CheckInv", null, profile, weapons, component);
         }
-        
+
         if (component.Data.CustomId == "Inventory-swap1")
         {
             if (profile != null)
@@ -267,10 +271,24 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Inventory-swap2")
         {
-            var selectedValue = component.Data.Values.FirstOrDefault();
-            var slot = selectedValue!.Split(":")[0].Split(" ")[1];
+            var itemSelected = component.Data.Values.FirstOrDefault();
 
-            await HandleInventoryAsync("ItemSwap", slot, profile, null, component);
+            await HandleInventoryAsync("ItemSwap", itemSelected, profile, null, component);
+
+        }
+
+        if (component.Data.CustomId == "Dungeon-id")
+        {
+            builder.WithRows(new[]
+            {
+                new ActionRowBuilder()
+                    .WithButton("Run", "Dungeon-Run")
+                    .WithButton("Crawl", "Dungeon-Crawl")
+                    .WithButton("Fight", "Dungeon-Fight")
+                    .WithButton("Back", "Back")
+            });
+
+            await component.RespondAsync(components: builder.Build());
         }
 
         if (component.Data.CustomId == "Dungeon-Run")
@@ -321,7 +339,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("HelpCmds", "Help-id")
                     .WithButton("BackupSave", "Save")
             });
-        
+
         /*
         builder.WithSelectMenu("myselectmenu", new List<SelectMenuOptionBuilder>(new[]
         {
@@ -334,9 +352,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         await ReplyAsync(components: builder.Build());
     }
 
-
-
-    [Command("WTest")]
+[Command("WTest")]
     public async Task TestAsync(string subCmd = "", int rah = 0)
     {
         var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
