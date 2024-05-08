@@ -188,12 +188,23 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await component.RespondAsync(components: builder.Build());
         }
 
+        if (component.Data.CustomId == "Dungeon-id")
+        {
+            builder.WithRows(new[]
+            {
+                new ActionRowBuilder()
+                    .WithButton("Run", "Dungeon-Run")
+                    .WithButton("Crawl", "Dungeon-Crawl")
+                    .WithButton("Fight", "Dungeon-Fight")
+                    .WithButton("Back", "Back")
+            });
+
+            await component.RespondAsync(components: builder.Build());
+        }
+
         if (component.Data.CustomId == "Account-Me")
         {
-            if (profile != null)
-            {
-                await HandleGameAccountAsync("Me", null, profile, weapons, component);
-            }
+            await HandleGameAccountAsync("Me", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Account-New")
@@ -203,10 +214,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Account-Delete")
         {
-            if (profile != null)
-            {
-                await HandleGameAccountAsync("Delete", null, profile, weapons, component);
-            }
+            await HandleGameAccountAsync("Delete", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Save")
@@ -263,7 +271,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             var slot = selectedValue!.Split(":")[0].Split(" ")[1];
 
             await HandleInventoryAsync("ItemSwap", slot, profile, null, component);
-
         }
 
         if (component.Data.CustomId == "Dungeon-Run")
@@ -552,19 +559,21 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-        if (profile != null && mess2 == "Run" && profile.Fight > 0)
+        if (mess2 == "Run" && profile.Fight > 0)
         {
-            profile.CName = "";
+            profile.CName = null;
             profile.CHP = 0;
             profile.CDamage = 0;
             profile.CExpGain = 0;
 
             profile.Fight = -1;
             response.AppendLine("You fled from the fight.");
+
             await ResponseAsync(response, component);
+            await UpdateProfileAsync(profile, component);
             return;
         }
-        else if (profile != null && mess2 == "Run" && profile.Fight < 0)
+        else if (mess2 == "Run" && profile.Fight == -1)
         {
             response.AppendLine("You ain't even in a fight yet.");
 
@@ -575,7 +584,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         Random rnd = new Random();
         int detect = 0;
 
-        if (profile != null && mess2 == "Crawl" && profile.Fight < 0)
+        if (mess2 == "Crawl" && profile.Fight < 0)
         {
             int Move = rnd.Next(1, 30);
 
@@ -627,7 +636,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             response.AppendLine($"You're in a Fight with: {profile.CName}! --> !Game Dungeon Fight");
         }
 
-        if (profile != null && mess2 == "Fight" && profile.Fight >= 0)
+        if (mess2 == "Fight" && profile.Fight >= 0)
         {
             int DMult = (profile.Damage[profile.ItemSelected] + profile.Level + profile.Value[profile.ItemSelected]);
             profile.CHP -= (DMult);
@@ -674,7 +683,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 profile.Fight = -1;
             }
         }
-        else if (profile != null && mess2 == "Fight" && profile.Fight == -1)
+        else if (mess2 == "Fight" && profile.Fight == -1)
         {
             response.AppendLine("You just swung at mid air like a crazy man! Are you shadow boxing?");
         }

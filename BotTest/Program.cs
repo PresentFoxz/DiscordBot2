@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using TextCommandFramework.Services;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
 
 namespace TextCommandFramework;
 
@@ -62,9 +63,9 @@ class Program
 
     private static ServiceProvider ConfigureServices()
     {
-        var folder = Environment.SpecialFolder.LocalApplicationData;
-        var path = Environment.GetFolderPath(folder);
-        path = System.IO.Path.Join(path, "bot.db");
+        var customPath = @"C:\Users\vcapr\DiscordBot2\BotTest\PlayerData";
+        string filePath = Path.Combine(customPath, "bot.db");
+        var path = Path.GetFullPath(filePath);
 
         var services = new ServiceCollection()
             .AddSingleton(new DiscordSocketConfig
