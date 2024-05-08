@@ -271,7 +271,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Inventory-swap2")
         {
-            var itemSelected = component.Data.Values.FirstOrDefault();
+            var selectedValue = component.Data.Values.FirstOrDefault();
+            var slot = selectedValue!.Split(":")[0].Split(" ")[1];
 
             await HandleInventoryAsync("ItemSwap", slot, profile, weapons, component);
         }
