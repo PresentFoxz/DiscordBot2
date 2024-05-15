@@ -17,6 +17,7 @@ using System.Xml.Linq;
 using Discord.WebSocket;
 using System.ComponentModel;
 using System.Text;
+using Microsoft.Extensions.Options;
 
 namespace TextCommandFramework.Modules;
 
@@ -62,7 +63,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _handlers.TryAdd("View-menu", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Save", HandleCustomButtonClicked);
-            _handlers.TryAdd("Back", HandleCustomButtonClicked);
+            _handlers.TryAdd("Back-id", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Help-id", HandleCustomButtonClicked);
             _handlerAdded = true;
@@ -98,7 +99,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         var profile = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == component.User.Id);
         var weapons = await _db.Weapon.OrderBy(w => w.Id).ToListAsync();
 
-        if (component.Data.CustomId == "Back")
+        if (component.Data.CustomId == "Back-id")
         {
             builder.WithRows(new[]
             {
@@ -109,8 +110,10 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("Dungeon", "Dungeon-id")
                     .WithButton("Shop", "Shop-id"),
                 new ActionRowBuilder()
-                    .WithButton("HelpCmds", "HelpCmds")
+                    .WithButton("HelpCmds", "Help-id")
             });
+
+            await component.RespondAsync(components: builder.Build());
         }
 
         if (component.Data.CustomId == "Shop-id")
@@ -178,7 +181,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                         .WithButton("My Account", "Account-Me")
                         .WithButton("New Account", "Account-New")
                         .WithButton("Delete Account", "Account-Delete")
-                        .WithButton("Back", "Back")
+                        .WithButton("Back", "Back-id")
                 });
 
             await component.RespondAsync(components: builder.Build());
@@ -194,18 +197,12 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Account-New")
         {
-            if (profile != null)
-            {
-                await HandleGameAccountAsync("New", null, profile, weapons, component);
-            }
+            await HandleGameAccountAsync("New", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Account-Delete")
         {
-            if (profile != null)
-            {
-                await HandleGameAccountAsync("Delete", null, profile, weapons, component);
-            }
+            await HandleGameAccountAsync("Delete", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Save")
@@ -264,28 +261,33 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await HandleInventoryAsync("ItemSwap", slot, profile, weapons, component);
         }
 
+        if (component.Data.CustomId == "Dungeon-id")
+        {
+            builder.WithRows(new[]
+            {
+                new ActionRowBuilder()
+                    .WithButton("Run", "Dungeon-Run")
+                    .WithButton("Crawl", "Dungeon-Crawl")
+                    .WithButton("Fight", "Dungeon-Fight")
+                    .WithButton("Back", "Back-id")
+            });
+
+            await component.RespondAsync(components: builder.Build());
+        }
+
         if (component.Data.CustomId == "Dungeon-Run")
         {
-            if (profile != null)
-            {
-                await HandleDungeonAsync("Run", null, profile, weapons, component);
-            }
+            await HandleDungeonAsync("Run", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Dungeon-Crawl")
         {
-            if (profile != null)
-            {
-                await HandleDungeonAsync("Crawl", null, profile, weapons, component);
-            }
+            await HandleDungeonAsync("Crawl", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Dungeon-Fight")
         {
-            if (profile != null)
-            {
-                await HandleDungeonAsync("Fight", null, profile, weapons, component);
-            }
+            await HandleDungeonAsync("Fight", null, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Help-id")
@@ -309,7 +311,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("Dungeon", "Dungeon-id")
                     .WithButton("Shop", "Shop-id"),
                 new ActionRowBuilder()
-                    .WithButton("HelpCmds", "HelpCmds")
+                    .WithButton("HelpCmds", "Help-id")
                     .WithButton("BackupSave", "Save")
             });
         
