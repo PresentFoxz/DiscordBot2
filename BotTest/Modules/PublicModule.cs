@@ -49,6 +49,8 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _handlers.TryAdd("Inventory-check", HandleCustomButtonClicked);
             _handlers.TryAdd("Inventory-swap1", HandleCustomButtonClicked);
             _handlers.TryAdd("Inventory-swap2", HandleCustomButtonClicked);
+            _handlers.TryAdd("Inventory-setItem", HandleCustomButtonClicked);
+            _handlers.TryAdd("setItem", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Dungeon-id", HandleCustomButtonClicked);
             _handlers.TryAdd("Dungeon-Crawl", HandleCustomButtonClicked);
@@ -58,8 +60,10 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             _handlers.TryAdd("Shop-id", HandleCustomButtonClicked);
             _handlers.TryAdd("Shop-Restock", HandleCustomButtonClicked);
             _handlers.TryAdd("Buy-menu", HandleCustomButtonClicked);
+            _handlers.TryAdd("Buying", HandleCustomButtonClicked);
             _handlers.TryAdd("Weapons-menu", HandleCustomButtonClicked);
             _handlers.TryAdd("Sell-menu", HandleCustomButtonClicked);
+            _handlers.TryAdd("Selling", HandleCustomButtonClicked);
             _handlers.TryAdd("View-menu", HandleCustomButtonClicked);
 
             _handlers.TryAdd("Save", HandleCustomButtonClicked);
@@ -125,6 +129,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("Buy", "Buy-menu")
                     .WithButton("Sell", "Sell-menu")
                     .WithButton("View", "View-menu")
+                    .WithButton("Back", "Back-id")
             });
 
             await component.RespondAsync("Remember to swap to the right item before you sell one.", components: builder.Build());
@@ -132,21 +137,37 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Buy-menu")
         {
-            // var options = await
-            //    _db.Weapon.OrderBy(x => x.Id).Select(x => new SelectMenuOptionBuilder().WithLabel(x.Name).WithValue(x.Id.ToString())).ToListAsync();
-
-            var options = new List<SelectMenuOptionBuilder>();
-
-            foreach (var i in profile.ShopItemsSave)
+            if (profile != null)
             {
-                var weapon = await _db.Weapon.FindAsync(profile.ShopItemsSave[i]);
-                options.Add(new SelectMenuOptionBuilder().WithLabel(weapon!.Name).WithValue(weapon!.Id.ToString()));
+                var buyOptions = new List<SelectMenuOptionBuilder>();
+
+                for (int i = 0; i < profile.ShopItemsSave.Count; i++)
+                {
+                    string weaponName = weapons.FirstOrDefault(w => w.Id == (profile.ShopItemsSave[i] + 1))?.Name ?? "Unknown";
+
+                    var option = new SelectMenuOptionBuilder()
+                        .WithLabel(weaponName)
+                        .WithValue($"Slot {i}: {profile.ShopItemsSave[i]}");
+
+                    buyOptions.Add(option);
+                }
+
+                builder.WithSelectMenu("Buying", buyOptions);
+
+                await component.RespondAsync("Which item do you want to buy?", components: builder.Build());
             }
+            else
+            {
+                await component.RespondAsync("You don't have an account yet!");
+            }
+        }
 
-            builder.WithSelectMenu("Weapons-menu", options);
+        if (component.Data.CustomId == "Buying")
+        {
+            var selectedValue = component.Data.Values.FirstOrDefault();
+            var slot = selectedValue!.Split(":")[0].Split(" ")[1];
 
-            await component.RespondAsync($"Select a weapon to buy. You have {profile.Money} gold and {profile.Inventory.Count - 1} " + 
-                                         $"inventory slots open.", components: builder.Build());
+            await HandleShopAsync("Buy", slot, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Weapons-menu")
@@ -163,6 +184,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 await component.RespondAsync("Invalid selection.");
         }
 
+        if (component.Data.CustomId == "Shop-Restock")
+        {
+            await HandleShopAsync("Swap", null, profile, weapons, component);
+        }
+
         if(component.Data.CustomId == "View-menu")
         {
             await HandleShopAsync("View", null, profile, weapons, component);
@@ -170,7 +196,37 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (component.Data.CustomId == "Sell-menu")
         {
-            await HandleShopAsync("Sell", null, profile, weapons, component);
+            if (profile != null)
+            {
+                var inventoryOptions = new List<SelectMenuOptionBuilder>();
+
+                for (int i = 0; i < profile.Inventory.Count - 1; i++)
+                {
+                    string weaponName = weapons.FirstOrDefault(w => w.Id == profile.Inventory[i])?.Name ?? "Unknown";
+
+                    var option = new SelectMenuOptionBuilder()
+                        .WithLabel(weaponName)
+                        .WithValue($"Slot {i}: {profile.Inventory[i]}");
+
+                    inventoryOptions.Add(option);
+                }
+
+                builder.WithSelectMenu("Selling", inventoryOptions);
+
+                await component.RespondAsync("Which item do you want to sell?", components: builder.Build());
+            }
+            else
+            {
+                await component.RespondAsync("You don't have an account yet!");
+            }
+        }
+
+        if (component.Data.CustomId == "Selling")
+        {
+            var selectedValue = component.Data.Values.FirstOrDefault();
+            var slot = selectedValue!.Split(":")[0].Split(" ")[1];
+
+            await HandleShopAsync("Sell", slot, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Account-id")
@@ -220,6 +276,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                 new ActionRowBuilder()
                     .WithButton("Check Inventory", "Inventory-check")
                     .WithButton("Swap Inventory", "Inventory-swap1")
+                    .WithButton("Swap Shop Item", "Inventory-setItem")
             });
 
             await component.RespondAsync(components: builder.Build());
@@ -259,6 +316,37 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             var slot = selectedValue!.Split(":")[0].Split(" ")[1];
 
             await HandleInventoryAsync("ItemSwap", slot, profile, weapons, component);
+        }
+
+        if (component.Data.CustomId == "Inventory-setItem")
+        {
+            if (profile != null)
+            {
+                var inventoryOptions = new List<SelectMenuOptionBuilder>();
+
+                for (int i = 0; i < profile.Inventory.Count - 1; i++)
+                {
+                    string weaponName = weapons.FirstOrDefault(w => w.Id == profile.Inventory[i])?.Name ?? "Unknown";
+
+                    var option = new SelectMenuOptionBuilder()
+                        .WithLabel(weaponName)
+                        .WithValue($"Slot {i}: {profile.Inventory[i]}");
+
+                    inventoryOptions.Add(option);
+                }
+
+                builder.WithSelectMenu("setItem", inventoryOptions);
+
+                await component.RespondAsync("Which slot do you want to swap to?", components: builder.Build());
+            }
+        }
+
+        if (component.Data.CustomId == "setItem")
+        {
+            var selectedValue = component.Data.Values.FirstOrDefault();
+            var slot = selectedValue!.Split(":")[0].Split(" ")[1];
+
+            await HandleSetItemAsync("Replace", slot, profile, weapons, component);
         }
 
         if (component.Data.CustomId == "Dungeon-id")
@@ -513,19 +601,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-        if (mess2 == "Remove" && profile.Inventory[profile.Inventory.Count] > 0)
-        {
-            response.AppendLine($"You lost your item {weapons[profile.Inventory[10]].Name} for good.");
-            profile.Inventory[profile.Inventory.Count] = 0;
-            profile.Damage[profile.Damage.Count] = 0;
-            profile.Value[profile.Value.Count] = 0;
-        }
-
         if (component == null)
         {
             if (mess2 == "Replace")
             {
-                if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
+                if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= profile.Inventory.Count - 1 && profile.Inventory.Count - 1 != 0)
                 {
                     response.AppendLine(
                         $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 2]].Name} for good." +
@@ -545,7 +625,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             if (mess2 == "Replace")
             {
-                if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= 9 && profile.Inventory.Count - 1 != 0)
+                if (profile != null && (int.Parse(nameLookup) - 1) >= 0 || (int.Parse(nameLookup) - 1) <= profile.Inventory.Count - 1 && profile.Inventory.Count - 1 != 0)
                 {
                     response.AppendLine(
                         $"You lost your item {weapons[profile.Inventory[int.Parse(nameLookup) - 2]].Name} for good." +
@@ -862,7 +942,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
     
     // Adding / removing money, levels, etc. for testing purposes
     [Command("Test")]
-    public async Task TestAsync(string mess1, string mess2, int amount, string nameLookupTest)
+    public async Task TestAsync(string mess1, string mess2, string nameLookupTest, int amount)
     {
         var user = await _db.Profile.FirstOrDefaultAsync(user => user.DiscordId == Context.User.Id);
         var other = await _db.Profile.FirstOrDefaultAsync(usr => usr.Name == nameLookupTest);
@@ -1092,7 +1172,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                        $"\r\rHere is the current shop stock:" +
                        $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
                        $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
-                       $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.\");");
+                       $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.");
         }
         else if(profile.Money <= 49)
         {
@@ -1100,36 +1180,80 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                        $"You currently have {profile.Money} bucks!");
         }
 
-        if (profile != null && mess1 == "Sell")
+        if (component == null)
         {
-            profile.Money += profile.Value[profile.ItemSelected];
-            profile.Inventory[profile.ItemSelected] = 0;
-            profile.Damage[profile.ItemSelected] = 0;
-            profile.Value[profile.ItemSelected] = 0;
-            response.AppendLine($"You sold your weapon for {profile.Value[profile.ItemSelected]} gold!");
+            if (profile != null && mess1 == "Sell")
+            {
+                response.AppendLine($"You sold your weapon for {profile.Value[int.Parse(nameLookup)]} gold!");
+                profile.Money += profile.Value[int.Parse(nameLookup)];
+                profile.Inventory[int.Parse(nameLookup)] = 1;
+                profile.Damage[int.Parse(nameLookup)] = 1;
+                profile.Value[int.Parse(nameLookup)] = 0;
+            }
+
+            if (profile != null && mess1 == "View")
+            {
+                response.AppendLine(
+                    $"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
+                    $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
+                    $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.");
+            }
+
+            if (profile != null && mess1 == "Buy")
+            {
+                if (profile.Money >= weapons[profile.ShopItemsSave[profile.ItemSelected - 1]].Value)
+                {
+                    profile.Money -= weapons[profile.ShopItemsSave[0]].Value;
+                    profile.Inventory[profile.ItemSelected] =
+                        weapons[profile.ShopItemsSave[profile.ItemSelected - 1]].Id;
+                    profile.Damage[profile.ItemSelected] =
+                        weapons[profile.ShopItemsSave[profile.ItemSelected - 1]].Damage;
+                    profile.Value[profile.ItemSelected] =
+                        weapons[profile.ShopItemsSave[profile.ItemSelected - 1]].Value;
+                    response.AppendLine(
+                        $"You bought the weapon {weapons[profile.ShopItemsSave[profile.ItemSelected - 1]].Name} for {weapons[profile.ShopItemsSave[profile.ItemSelected - 1]].Value} gold!");
+                }
+                else
+                {
+                    response.AppendLine("You don't have enough money!" +
+                                        $"The item cost {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} while you only have {profile.Money} bucks!");
+                }
+            }
         }
 
-        if (profile != null && mess1 == "View")
+        if (component != null)
         {
-            response.AppendLine($"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
-                       $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
-                       $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.\");");
-        }
-        
-        if (profile != null && mess1 == "Buy")
-        {
-            if (profile.Money >= weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value)
+            if (profile != null && mess1 == "Sell")
             {
-                profile.Money -= weapons[profile.ShopItemsSave[0]].Value;
-                profile.Inventory[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Id;
-                profile.Damage[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Damage;
-                profile.Value[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value;
-                response.AppendLine($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!");
+                response.AppendLine($"You sold your weapon for {profile.Value[int.Parse(nameLookup)]} gold!");
+                profile.Money += profile.Value[int.Parse(nameLookup)];
+                profile.Inventory[int.Parse(nameLookup)] = 1;
+                profile.Damage[int.Parse(nameLookup)] = 1;
+                profile.Value[int.Parse(nameLookup)] = 0;
             }
-            else
+
+            if (profile != null && mess1 == "View")
             {
-                response.AppendLine("You don't have enough money!" +
-                           $"The item cost {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} while you only have {profile.Money} bucks!");
+                response.AppendLine($"\rItem 1: {weapons[profile.ShopItemsSave[0]].Name}, Damage: {weapons[profile.ShopItemsSave[0]].Damage}, Costs: {weapons[profile.ShopItemsSave[0]].Value} gold." +
+                                    $"\rItem 2: {weapons[profile.ShopItemsSave[1]].Name}, Damage: {weapons[profile.ShopItemsSave[1]].Damage}, Costs: {weapons[profile.ShopItemsSave[1]].Value} gold." +
+                                    $"\rItem 3: {weapons[profile.ShopItemsSave[2]].Name}, Damage: {weapons[profile.ShopItemsSave[2]].Damage}, Costs: {weapons[profile.ShopItemsSave[2]].Value} gold.");
+            }
+
+            if (profile != null && mess1 == "Buy")
+            {
+                if (profile.Money >= weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Value)
+                {
+                    profile.Money -= weapons[profile.ShopItemsSave[0]].Value;
+                    profile.Inventory[profile.ItemSelected - 1] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Id;
+                    profile.Damage[profile.ItemSelected - 1] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Damage;
+                    profile.Value[profile.ItemSelected - 1] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value;
+                    response.AppendLine($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!");
+                }
+                else
+                {
+                    response.AppendLine("You don't have enough money!" +
+                                        $"The item cost {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} while you only have {profile.Money} bucks!");
+                }
             }
         }
 
