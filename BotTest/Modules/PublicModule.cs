@@ -392,15 +392,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("HelpCmds", "Help-id")
                     .WithButton("BackupSave", "Save")
             });
-        
-        /*
-        builder.WithSelectMenu("myselectmenu", new List<SelectMenuOptionBuilder>(new[]
-        {
-            new SelectMenuOptionBuilder().WithLabel("Carrots").WithValue("5").WithDefault(true),
-            new SelectMenuOptionBuilder().WithLabel("Lettuce").WithValue("6"),
-            new SelectMenuOptionBuilder().WithLabel("Rah").WithValue("7")
-        }));
-        */
 
         await ReplyAsync(components: builder.Build());
     }
