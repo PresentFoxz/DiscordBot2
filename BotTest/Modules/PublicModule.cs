@@ -125,7 +125,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             builder.WithRows(new[]
             {
                 new ActionRowBuilder()
-                    .WithButton("Restock", "Shop-Restock")
+                    .WithButton("Restock (Costs 50 Gold)", "Shop-Restock")
                     .WithButton("Buy", "Buy-menu")
                     .WithButton("Sell", "Sell-menu")
                     .WithButton("View", "View-menu")
@@ -135,6 +135,10 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             await component.RespondAsync("Remember to swap to the right item before you sell one.", components: builder.Build());
         }
 
+        if (component.Data.CustomId == "Shop-Restock")
+        {
+            await HandleShopAsync("Swap", null, profile, weapons, component);
+        }
         if (component.Data.CustomId == "Buy-menu")
         {
             if (profile != null)
@@ -168,20 +172,6 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             var slot = selectedValue!.Split(":")[0].Split(" ")[1];
 
             await HandleShopAsync("Buy", slot, profile, weapons, component);
-        }
-
-        if (component.Data.CustomId == "Weapons-menu")
-        {
-            var weapon = component.Data.Values.ToString();
-            var selectedValue = component.Data.Values.FirstOrDefault();
-
-            if (selectedValue != null && int.TryParse(selectedValue, out var weaponId))
-            {
-                var weaponSelected = _db.Weapon.FindAsync(weaponId).ToString();
-                await HandleShopAsync("Buy", weaponSelected, profile, weapons);
-            }
-            else
-                await component.RespondAsync("Invalid selection.");
         }
 
         if (component.Data.CustomId == "Shop-Restock")
@@ -1076,7 +1066,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         if (nameLookupTest != "me" && other != null)
         {
             await UpdateProfileAsync(other);
-        } 
+        }
         return;
     }
 
