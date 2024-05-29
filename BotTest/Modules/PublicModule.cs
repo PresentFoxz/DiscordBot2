@@ -114,7 +114,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("Dungeon", "Dungeon-id")
                     .WithButton("Shop", "Shop-id"),
                 new ActionRowBuilder()
-                    .WithButton("HelpCmds", "Help-id")
+                    .WithButton("Help-id", "Help-id")
             });
 
             await component.RespondAsync(components: builder.Build());
@@ -389,7 +389,7 @@ public class PublicModule : ModuleBase<SocketCommandContext>
                     .WithButton("Dungeon", "Dungeon-id")
                     .WithButton("Shop", "Shop-id"),
                 new ActionRowBuilder()
-                    .WithButton("HelpCmds", "Help-id")
+                    .WithButton("Help-id", "Help-id")
                     .WithButton("BackupSave", "Save")
             });
 
