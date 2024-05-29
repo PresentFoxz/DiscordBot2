@@ -1243,11 +1243,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
             {
                 if (profile.Money >= weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Value)
                 {
-                    profile.Money -= weapons[profile.ShopItemsSave[0]].Value;
-                    profile.Inventory[profile.ItemSelected - 1] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Id;
-                    profile.Damage[profile.ItemSelected - 1] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Damage;
-                    profile.Value[profile.ItemSelected - 1] = weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value;
-                    response.AppendLine($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup) - 1]].Value} gold!");
+                    profile.Money -= weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Value;
+                    profile.Inventory[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Id;
+                    profile.Damage[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Damage;
+                    profile.Value[profile.ItemSelected] = weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Value;
+                    response.AppendLine($"You bought the weapon {weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Name} for {weapons[profile.ShopItemsSave[int.Parse(nameLookup)]].Value} gold!");
                 }
                 else
                 {
