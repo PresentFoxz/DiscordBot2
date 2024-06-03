@@ -870,14 +870,22 @@ public class PublicModule : ModuleBase<SocketCommandContext>
 
         if (profile != null && mess2 == "Delete")
         {
-            _db.Profile.Remove(profile);
-            await _db.SaveChangesAsync();
-            response.AppendLine("Account removed!");
+            var removeProfile = _db.Profile.FirstOrDefault(x => x.DiscordId == profile.DiscordId);
+            if (removeProfile != null)
+            {
+                _db.Profile.Remove(removeProfile);
+                await _db.SaveChangesAsync();
+
+                response.AppendLine("Account removed!");
+            }
+            else
+            {
+                response.AppendLine("Account not found.");
+            }
         }
 
         if (profile != null && mess2 == "Me")
         {
-
             response.AppendLine($"This is: {profile.Name} " +
                          $"\nMoney: {profile.Money} " +
                          $"\nLevel: {profile.Level} " +
@@ -912,11 +920,11 @@ public class PublicModule : ModuleBase<SocketCommandContext>
         {
             var roof = await _db.Profile.FirstOrDefaultAsync(usr => usr.DiscordId == Context.User.Id);
 
-            await UpdateProfileAsync(roof);
+            await UpdateProfileAsync(roof, null);
         }
         else
         {
-            await UpdateProfileAsync(profile, component);
+            if (mess2 != "Delete") { await UpdateProfileAsync(profile, component); }
         }
         return;
     }

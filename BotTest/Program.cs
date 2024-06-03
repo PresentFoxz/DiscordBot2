@@ -63,7 +63,7 @@ class Program
 
     private static ServiceProvider ConfigureServices()
     {
-        var customPath = @"C:\Users\apgar\Documents\Github\DiscordBot2\BotTest\PlayerData";
+        var customPath = @"C:\Users\vcapr\DiscordBot2\BotTest\PlayerData";
         string filePath = Path.Combine(customPath, "bot.db");
         var path = Path.GetFullPath(filePath);
 
